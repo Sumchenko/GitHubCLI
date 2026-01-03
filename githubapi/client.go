@@ -1,11 +1,21 @@
 package githubapi
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 )
+
+type Repository struct {
+	Name            string `json:"name"`
+	HTMLUrl         string `json:"html_url"`
+	Description     string `json:"description"`
+	StargazersCount int    `json:"stargazers_count"`
+	Language        string `json:"language"`
+}
 
 type Client struct {
 	HTTPClient *http.Client
@@ -23,10 +33,10 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) FetchUserRepos(username string) ([]byte, error) {
+func (c *Client) FetchUserRepos(ctx context.Context, username string) ([]Repository, error) {
 	url := fmt.Sprintf("%s/users/%s/repos", c.BaseURL, username)
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Ошибка создания запроса: %w", err)
 	}
@@ -49,5 +59,12 @@ func (c *Client) FetchUserRepos(username string) ([]byte, error) {
 		return nil, fmt.Errorf("Не удалось прочитать тело ответа: %w", err)
 	}
 
-	return body, nil
+	var repos []Repository
+
+	if err := json.Unmarshal(body, &repos); err != nil {
+		return nil, fmt.Errorf("Ошибка анмаршалинга json ответа: %w", err)
+
+	}
+
+	return repos, nil
 }
